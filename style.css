@@ -540,14 +540,6 @@ select:active {
     padding: 16px;
   }
 
-  .cards-grid.grid-3,
-  .cards-grid.grid-5,
-  .cards-grid.grid-7,
-  .cards-grid.grid-11,
-  .cards-grid.grid-15 {
-    grid-template-columns: repeat(3, 1fr);
-  }
-
   .progress-bar-container {
     max-width: 350px;
     height: 30px;
