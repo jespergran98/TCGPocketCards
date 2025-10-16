@@ -13,7 +13,9 @@ const rarityOrder = {
   "One Star": 5,
   "Two Star": 6,
   "Three Star": 7,
-  Crown: 8,
+  "One Shiny": 8,
+  "Two Shiny": 9,
+  Crown: 10,
 };
 
 async function fetchSets() {
