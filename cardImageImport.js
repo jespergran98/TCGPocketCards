@@ -1,5 +1,6 @@
 const API = "https://api.tcgdex.net/v2/en";
-const BATCH_SIZE = 500; // Process in reasonable batches to avoid overwhelming the API
+const BATCH_SIZE = 100; // Smaller batches for faster initial display
+const DISPLAY_BATCH_SIZE = 50; // Display cards in smaller groups
 
 const RARITY_ORDER = {
   "One Diamond": 1,
@@ -16,8 +17,9 @@ const RARITY_ORDER = {
 
 let sets = [];
 let currentCards = [];
-let currentSort = "collector";
-let currentDirection = "asc";
+let currentSort = "rarity";
+let currentDirection = "desc";
+let isLoading = false;
 
 // Initialize app
 async function init() {
@@ -25,6 +27,8 @@ async function init() {
     await fetchSets();
     setupEventListeners();
     updateToggleButtons();
+    // Fetch all sets immediately on app load
+    await fetchCards("");
   } catch (error) {
     console.error("Initialization error:", error);
     showError("Failed to initialize application");
@@ -47,13 +51,17 @@ async function fetchSets() {
 
 // Fetch cards from selected set or all sets
 async function fetchCards(setId) {
-  showLoading("Loading cards...");
+  if (isLoading) return;
+  isLoading = true;
+
+  showLoading("Loading cards...", 0);
 
   try {
     const cards = setId ? await fetchFromSet(setId) : await fetchFromAllSets();
 
     if (!cards.length) {
       showError("No cards found");
+      isLoading = false;
       return;
     }
 
@@ -62,6 +70,8 @@ async function fetchCards(setId) {
   } catch (error) {
     console.error("Fetch error:", error);
     showError("Error loading cards. Please try again.");
+  } finally {
+    isLoading = false;
   }
 }
 
@@ -89,7 +99,11 @@ async function loadCardDetails(basicCards) {
   for (let i = 0; i < total; i += BATCH_SIZE) {
     const batch = basicCards.slice(i, i + BATCH_SIZE);
     const progress = Math.min(i + BATCH_SIZE, total);
-    showLoading(`Loading card details... ${progress}/${total}`);
+    const progressPercent = Math.round((progress / total) * 100);
+    showLoading(
+      `Loading card details... ${progress}/${total}`,
+      progressPercent
+    );
 
     const promises = batch.map((card) =>
       fetch(`${API}/cards/${card.id}`)
@@ -102,6 +116,15 @@ async function loadCardDetails(basicCards) {
 
     const results = await Promise.all(promises);
     allDetails.push(...results.filter(Boolean));
+
+    // Display cards progressively as batches complete
+    if (allDetails.length > 0 && i + BATCH_SIZE < total) {
+      currentCards = allDetails.map((card) => ({
+        ...card,
+        expansionIndex: sets.findIndex((s) => s.id === card.set.id),
+      }));
+      displayCardsProgressive();
+    }
   }
 
   // Add expansion index for sorting
@@ -163,6 +186,30 @@ function compareByCollectorNumber(a, b) {
   return parseInt(a.localId) - parseInt(b.localId);
 }
 
+// Display cards progressively while loading
+function displayCardsProgressive() {
+  const grid = document.getElementById("cardsGrid");
+  const sorted = sortCards(currentCards);
+
+  if (!sorted.length) return;
+
+  grid.innerHTML = sorted
+    .map(
+      (card) => `
+    <div class="card">
+      <img 
+        src="${card.image}/high.webp" 
+        alt="${card.name}" 
+        class="card-image"
+        onerror="this.src='data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 width=%22200%22 height=%22250%22%3E%3Crect fill=%22%23ddd%22 width=%22200%22 height=%22250%22/%3E%3Ctext x=%2250%25%22 y=%2250%25%22 text-anchor=%22middle%22 dy=%22.3em%22 fill=%22%23666%22%3EImage unavailable%3C/text%3E%3C/svg%3E'"
+        loading="lazy"
+      >
+    </div>
+  `
+    )
+    .join("");
+}
+
 // Display cards in grid
 function displayCards() {
   const grid = document.getElementById("cardsGrid");
@@ -190,11 +237,16 @@ function displayCards() {
     .join("");
 }
 
-// Show loading message
-function showLoading(message) {
-  document.getElementById(
-    "cardsGrid"
-  ).innerHTML = `<div class="loading">${message}</div>`;
+// Show loading message with progress bar
+function showLoading(message, progress = 0) {
+  document.getElementById("cardsGrid").innerHTML = `
+    <div class="loading">
+      <div class="loading-text">${message}</div>
+      <div class="progress-bar-container">
+        <div class="progress-bar" style="width: ${progress}%"></div>
+      </div>
+    </div>
+  `;
 }
 
 // Show error message

@@ -17,16 +17,16 @@
         <div class="control-group">
           <label>Set</label>
           <select id="setFilter">
-            <option value="">All Sets</option>
+            <option value="" selected>All Sets</option>
           </select>
         </div>
 
         <div class="control-group">
           <label>Sort By</label>
           <select id="sortFilter">
+            <option value="rarity" selected>Rarity</option>
             <option value="collector">Collector Number</option>
             <option value="type">Type</option>
-            <option value="rarity">Rarity</option>
             <option value="expansion">Expansion</option>
           </select>
         </div>
@@ -34,16 +34,21 @@
         <div class="control-group">
           <label>Order</label>
           <div class="toggle-group">
-            <button id="sortAsc" class="toggle-btn active">
-              ↑ Low to High
+            <button id="sortAsc" class="toggle-btn">↑ Low to High</button>
+            <button id="sortDesc" class="toggle-btn active">
+              ↓ High to Low
             </button>
-            <button id="sortDesc" class="toggle-btn">↓ High to Low</button>
           </div>
         </div>
       </div>
 
       <div class="cards-grid" id="cardsGrid">
-        <div class="loading">Loading cards...</div>
+        <div class="loading">
+          <div class="loading-text">Loading cards...</div>
+          <div class="progress-bar-container">
+            <div class="progress-bar" style="width: 0%"></div>
+          </div>
+        </div>
       </div>
     </div>
     <script src="cardImageImport.js"></script>
