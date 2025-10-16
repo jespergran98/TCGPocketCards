@@ -1,6 +1,5 @@
 const API = "https://api.tcgdex.net/v2/en";
-const BATCH_SIZE = 100; // Smaller batches for faster initial display
-const DISPLAY_BATCH_SIZE = 50; // Display cards in smaller groups
+const BATCH_SIZE = 500;
 
 const RARITY_ORDER = {
   "One Diamond": 1,
@@ -27,7 +26,6 @@ async function init() {
     await fetchSets();
     setupEventListeners();
     updateToggleButtons();
-    // Fetch all sets immediately on app load
     await fetchCards("");
   } catch (error) {
     console.error("Initialization error:", error);
@@ -37,16 +35,21 @@ async function init() {
 
 // Fetch available sets
 async function fetchSets() {
-  const data = await fetch(`${API}/series/tcgp`).then((r) => r.json());
-  sets = data.sets;
+  try {
+    const data = await fetch(`${API}/series/tcgp`).then((r) => r.json());
+    sets = data.sets || [];
 
-  const filter = document.getElementById("setFilter");
-  sets.forEach((set) => {
-    const option = document.createElement("option");
-    option.value = set.id;
-    option.textContent = set.name;
-    filter.appendChild(option);
-  });
+    const filter = document.getElementById("setFilter");
+    sets.forEach((set) => {
+      const option = document.createElement("option");
+      option.value = set.id;
+      option.textContent = set.name;
+      filter.appendChild(option);
+    });
+  } catch (error) {
+    console.error("Failed to fetch sets:", error);
+    throw error;
+  }
 }
 
 // Fetch cards from selected set or all sets
@@ -61,7 +64,6 @@ async function fetchCards(setId) {
 
     if (!cards.length) {
       showError("No cards found");
-      isLoading = false;
       return;
     }
 
@@ -100,6 +102,7 @@ async function loadCardDetails(basicCards) {
     const batch = basicCards.slice(i, i + BATCH_SIZE);
     const progress = Math.min(i + BATCH_SIZE, total);
     const progressPercent = Math.round((progress / total) * 100);
+
     showLoading(
       `Loading card details... ${progress}/${total}`,
       progressPercent
@@ -116,15 +119,6 @@ async function loadCardDetails(basicCards) {
 
     const results = await Promise.all(promises);
     allDetails.push(...results.filter(Boolean));
-
-    // Display cards progressively as batches complete
-    if (allDetails.length > 0 && i + BATCH_SIZE < total) {
-      currentCards = allDetails.map((card) => ({
-        ...card,
-        expansionIndex: sets.findIndex((s) => s.id === card.set.id),
-      }));
-      displayCardsProgressive();
-    }
   }
 
   // Add expansion index for sorting
@@ -137,9 +131,10 @@ async function loadCardDetails(basicCards) {
 // Sort cards based on current settings
 function sortCards(cards) {
   return [...cards].sort((a, b) => {
-    // Handle "None" rarity
+    // Handle "None" rarity - always sort to end
     if (a.rarity === "None" && b.rarity !== "None") return 1;
     if (a.rarity !== "None" && b.rarity === "None") return -1;
+    if (a.rarity === "None" && b.rarity === "None") return 0;
 
     let comparison = 0;
 
@@ -159,7 +154,7 @@ function sortCards(cards) {
         comparison =
           (RARITY_ORDER[a.rarity] || 999) - (RARITY_ORDER[b.rarity] || 999);
         if (comparison === 0) {
-          comparison = parseInt(a.localId) - parseInt(b.localId);
+          comparison = parseInt(a.localId || 0) - parseInt(b.localId || 0);
         }
         if (comparison === 0) {
           comparison = a.expansionIndex - b.expansionIndex;
@@ -169,7 +164,7 @@ function sortCards(cards) {
       case "expansion":
         comparison = a.expansionIndex - b.expansionIndex;
         if (comparison === 0) {
-          comparison = parseInt(a.localId) - parseInt(b.localId);
+          comparison = parseInt(a.localId || 0) - parseInt(b.localId || 0);
         }
         break;
     }
@@ -183,31 +178,7 @@ function compareByCollectorNumber(a, b) {
   if (a.expansionIndex !== b.expansionIndex) {
     return a.expansionIndex - b.expansionIndex;
   }
-  return parseInt(a.localId) - parseInt(b.localId);
-}
-
-// Display cards progressively while loading
-function displayCardsProgressive() {
-  const grid = document.getElementById("cardsGrid");
-  const sorted = sortCards(currentCards);
-
-  if (!sorted.length) return;
-
-  grid.innerHTML = sorted
-    .map(
-      (card) => `
-    <div class="card">
-      <img 
-        src="${card.image}/high.webp" 
-        alt="${card.name}" 
-        class="card-image"
-        onerror="this.src='data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 width=%22200%22 height=%22250%22%3E%3Crect fill=%22%23ddd%22 width=%22200%22 height=%22250%22/%3E%3Ctext x=%2250%25%22 y=%2250%25%22 text-anchor=%22middle%22 dy=%22.3em%22 fill=%22%23666%22%3EImage unavailable%3C/text%3E%3C/svg%3E'"
-        loading="lazy"
-      >
-    </div>
-  `
-    )
-    .join("");
+  return parseInt(a.localId || 0) - parseInt(b.localId || 0);
 }
 
 // Display cards in grid
@@ -221,29 +192,36 @@ function displayCards() {
   }
 
   grid.innerHTML = sorted
-    .map(
-      (card) => `
-    <div class="card">
-      <img 
-        src="${card.image}/high.webp" 
-        alt="${card.name}" 
-        class="card-image"
-        onerror="this.src='data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 width=%22200%22 height=%22250%22%3E%3Crect fill=%22%23ddd%22 width=%22200%22 height=%22250%22/%3E%3Ctext x=%2250%25%22 y=%2250%25%22 text-anchor=%22middle%22 dy=%22.3em%22 fill=%22%23666%22%3EImage unavailable%3C/text%3E%3C/svg%3E'"
-        loading="lazy"
-      >
-    </div>
-  `
-    )
+    .map((card) => {
+      const imageUrl = card.image ? `${card.image}/high.webp` : "";
+      const cardName = card.name || "Unknown Card";
+
+      return `
+        <div class="card">
+          <img 
+            src="${imageUrl}" 
+            alt="${cardName}" 
+            class="card-image"
+            onerror="this.src='data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 width=%22200%22 height=%22250%22%3E%3Crect fill=%22%23ddd%22 width=%22200%22 height=%22250%22/%3E%3Ctext x=%2250%25%22 y=%2250%25%22 text-anchor=%22middle%22 dy=%22.3em%22 fill=%22%23666%22 font-size=%2212%22%3EImage unavailable%3C/text%3E%3C/svg%3E'"
+            loading="lazy"
+          >
+        </div>
+      `;
+    })
     .join("");
 }
 
 // Show loading message with progress bar
 function showLoading(message, progress = 0) {
-  document.getElementById("cardsGrid").innerHTML = `
+  const grid = document.getElementById("cardsGrid");
+  grid.innerHTML = `
     <div class="loading">
       <div class="loading-text">${message}</div>
       <div class="progress-bar-container">
-        <div class="progress-bar" style="width: ${progress}%"></div>
+        <div class="progress-bar" style="width: ${Math.min(
+          100,
+          Math.max(0, progress)
+        )}%"></div>
       </div>
     </div>
   `;
@@ -251,23 +229,27 @@ function showLoading(message, progress = 0) {
 
 // Show error message
 function showError(message) {
-  document.getElementById(
-    "cardsGrid"
-  ).innerHTML = `<div class="error">${message}</div>`;
+  const grid = document.getElementById("cardsGrid");
+  grid.innerHTML = `<div class="error">${message}</div>`;
 }
 
 // Set up event listeners
 function setupEventListeners() {
-  document.getElementById("setFilter").addEventListener("change", (e) => {
+  const setFilter = document.getElementById("setFilter");
+  const sortFilter = document.getElementById("sortFilter");
+  const sortAsc = document.getElementById("sortAsc");
+  const sortDesc = document.getElementById("sortDesc");
+
+  setFilter.addEventListener("change", (e) => {
     fetchCards(e.target.value);
   });
 
-  document.getElementById("sortFilter").addEventListener("change", (e) => {
+  sortFilter.addEventListener("change", (e) => {
     currentSort = e.target.value;
     if (currentCards.length) displayCards();
   });
 
-  document.getElementById("sortAsc").addEventListener("click", () => {
+  sortAsc.addEventListener("click", () => {
     if (currentDirection !== "asc") {
       currentDirection = "asc";
       updateToggleButtons();
@@ -275,7 +257,7 @@ function setupEventListeners() {
     }
   });
 
-  document.getElementById("sortDesc").addEventListener("click", () => {
+  sortDesc.addEventListener("click", () => {
     if (currentDirection !== "desc") {
       currentDirection = "desc";
       updateToggleButtons();
@@ -286,12 +268,11 @@ function setupEventListeners() {
 
 // Update toggle button active states
 function updateToggleButtons() {
-  document
-    .getElementById("sortAsc")
-    .classList.toggle("active", currentDirection === "asc");
-  document
-    .getElementById("sortDesc")
-    .classList.toggle("active", currentDirection === "desc");
+  const sortAsc = document.getElementById("sortAsc");
+  const sortDesc = document.getElementById("sortDesc");
+
+  sortAsc.classList.toggle("active", currentDirection === "asc");
+  sortDesc.classList.toggle("active", currentDirection === "desc");
 }
 
 // Start the application

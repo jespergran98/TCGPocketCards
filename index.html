@@ -15,14 +15,14 @@
 
       <div class="controls">
         <div class="control-group">
-          <label>Set</label>
+          <label for="setFilter">Set</label>
           <select id="setFilter">
             <option value="" selected>All Sets</option>
           </select>
         </div>
 
         <div class="control-group">
-          <label>Sort By</label>
+          <label for="sortFilter">Sort By</label>
           <select id="sortFilter">
             <option value="rarity" selected>Rarity</option>
             <option value="collector">Collector Number</option>
@@ -34,15 +34,21 @@
         <div class="control-group">
           <label>Order</label>
           <div class="toggle-group">
-            <button id="sortAsc" class="toggle-btn">↑ Low to High</button>
-            <button id="sortDesc" class="toggle-btn active">
+            <button id="sortAsc" class="toggle-btn" aria-label="Sort ascending">
+              ↑ Low to High
+            </button>
+            <button
+              id="sortDesc"
+              class="toggle-btn active"
+              aria-label="Sort descending"
+            >
               ↓ High to Low
             </button>
           </div>
         </div>
 
         <div class="control-group grid-control">
-          <label>Grid Columns</label>
+          <label for="gridFilter">Grid Columns</label>
           <select id="gridFilter">
             <option value="3">3</option>
             <option value="5">5</option>
@@ -66,16 +72,7 @@
     <script>
       document.getElementById("gridFilter").addEventListener("change", (e) => {
         const cardsGrid = document.getElementById("cardsGrid");
-        // Remove all existing grid-X classes
-        cardsGrid.classList.remove(
-          "grid-3",
-          "grid-5",
-          "grid-7",
-          "grid-11",
-          "grid-15"
-        );
-        // Add the new grid class while keeping 'cards-grid' base class
-        cardsGrid.classList.add(`grid-${e.target.value}`);
+        cardsGrid.className = `cards-grid grid-${e.target.value}`;
       });
     </script>
   </body>

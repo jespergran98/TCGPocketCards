@@ -18,7 +18,7 @@ body {
       transparent 1px
     );
   background-size: 50px 50px, 30px 30px;
-  min-height: 100svh;
+  min-height: 100vh;
   overflow-x: hidden;
   image-rendering: pixelated;
   image-rendering: -moz-crisp-edges;
@@ -70,8 +70,8 @@ h1 {
   text-align: center;
   color: #f1c40f;
   font-size: 2.5em;
-  text-shadow: 3px 3px 0px #000, -1px -1px 0px #000, 1px -1px 0px #000,
-    -1px 1px 0px #000;
+  text-shadow: 3px 3px 0 #000, -1px -1px 0 #000, 1px -1px 0 #000,
+    -1px 1px 0 #000;
   letter-spacing: 3px;
   line-height: 1.4;
   text-transform: uppercase;
@@ -236,7 +236,6 @@ select:active {
 
 .cards-grid {
   display: grid;
-  grid-template-columns: repeat(7, 1fr);
   gap: 20px;
   padding: 30px;
   background: linear-gradient(135deg, #34495e 0%, #2c3e50 100%);
@@ -428,38 +427,6 @@ select:active {
   box-shadow: 0 8px 0 #000, inset -2px -2px 0 rgba(0, 0, 0, 0.2);
 }
 
-/* Indicator Lights */
-.indicator-light {
-  position: absolute;
-  border-radius: 50%;
-  border: 2px solid #2c3e50;
-  box-shadow: inset 1px 1px 2px rgba(0, 0, 0, 0.3);
-}
-
-.light-red {
-  background: #e74c3c;
-  box-shadow: inset 1px 1px 2px rgba(0, 0, 0, 0.3),
-    0 0 8px rgba(231, 76, 60, 0.5);
-}
-
-.light-yellow {
-  background: #f1c40f;
-  box-shadow: inset 1px 1px 2px rgba(0, 0, 0, 0.3),
-    0 0 8px rgba(241, 196, 15, 0.5);
-}
-
-.light-green {
-  background: #27ae60;
-  box-shadow: inset 1px 1px 2px rgba(0, 0, 0, 0.3),
-    0 0 8px rgba(39, 174, 96, 0.5);
-}
-
-.light-blue {
-  background: #3498db;
-  box-shadow: inset 1px 1px 2px rgba(0, 0, 0, 0.3),
-    0 0 8px rgba(52, 152, 219, 0.5);
-}
-
 @media (max-width: 768px) {
   body {
     padding: 10px;
@@ -491,27 +458,14 @@ select:active {
   }
 
   .cards-grid {
-    grid-template-columns: repeat(3, 1fr);
     gap: 16px;
     padding: 16px;
   }
 
-  .cards-grid.grid-3 {
-    grid-template-columns: repeat(3, 1fr);
-  }
-
-  .cards-grid.grid-5 {
-    grid-template-columns: repeat(3, 1fr);
-  }
-
-  .cards-grid.grid-7 {
-    grid-template-columns: repeat(3, 1fr);
-  }
-
-  .cards-grid.grid-11 {
-    grid-template-columns: repeat(3, 1fr);
-  }
-
+  .cards-grid.grid-3,
+  .cards-grid.grid-5,
+  .cards-grid.grid-7,
+  .cards-grid.grid-11,
   .cards-grid.grid-15 {
     grid-template-columns: repeat(3, 1fr);
   }
