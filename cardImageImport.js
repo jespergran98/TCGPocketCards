@@ -68,7 +68,12 @@ async function fetchCards(setId) {
     }
 
     currentCards = await loadCardDetails(cards);
-    displayCards();
+    // Use the search filter if searchbar.js is loaded
+    if (typeof filterAndDisplayCards === "function") {
+      filterAndDisplayCards();
+    } else {
+      displayCards();
+    }
   } catch (error) {
     console.error("Fetch error:", error);
     showError("Error loading cards. Please try again.");
@@ -246,14 +251,26 @@ function setupEventListeners() {
 
   sortFilter.addEventListener("change", (e) => {
     currentSort = e.target.value;
-    if (currentCards.length) displayCards();
+    if (currentCards.length) {
+      if (typeof filterAndDisplayCards === "function") {
+        filterAndDisplayCards();
+      } else {
+        displayCards();
+      }
+    }
   });
 
   sortAsc.addEventListener("click", () => {
     if (currentDirection !== "asc") {
       currentDirection = "asc";
       updateToggleButtons();
-      if (currentCards.length) displayCards();
+      if (currentCards.length) {
+        if (typeof filterAndDisplayCards === "function") {
+          filterAndDisplayCards();
+        } else {
+          displayCards();
+        }
+      }
     }
   });
 
@@ -261,7 +278,13 @@ function setupEventListeners() {
     if (currentDirection !== "desc") {
       currentDirection = "desc";
       updateToggleButtons();
-      if (currentCards.length) displayCards();
+      if (currentCards.length) {
+        if (typeof filterAndDisplayCards === "function") {
+          filterAndDisplayCards();
+        } else {
+          displayCards();
+        }
+      }
     }
   });
 }

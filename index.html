@@ -14,6 +14,25 @@
       </div>
 
       <div class="controls">
+        <div class="control-group search-group">
+          <label for="searchInput">Search</label>
+          <div class="search-container">
+            <input
+              type="text"
+              id="searchInput"
+              placeholder="Pokémon name..."
+              autocomplete="off"
+            />
+            <button
+              id="clearSearch"
+              class="clear-btn"
+              aria-label="Clear search"
+            >
+              ×
+            </button>
+          </div>
+        </div>
+
         <div class="control-group">
           <label for="setFilter">Set</label>
           <select id="setFilter">
@@ -69,6 +88,7 @@
       </div>
     </div>
     <script src="cardImageImport.js"></script>
+    <script src="searchbar.js"></script>
     <script>
       document.getElementById("gridFilter").addEventListener("change", (e) => {
         const cardsGrid = document.getElementById("cardsGrid");
