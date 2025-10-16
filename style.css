@@ -236,7 +236,7 @@ select:active {
 
 .cards-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  grid-template-columns: repeat(7, 1fr);
   gap: 20px;
   padding: 30px;
   background: linear-gradient(135deg, #34495e 0%, #2c3e50 100%);
@@ -245,6 +245,27 @@ select:active {
   box-shadow: 0 15px 0 #000, inset -4px -4px 0 rgba(0, 0, 0, 0.2),
     inset 4px 4px 0 rgba(255, 255, 255, 0.1);
   position: relative;
+}
+
+/* Grid column variations */
+.cards-grid.grid-3 {
+  grid-template-columns: repeat(3, 1fr);
+}
+
+.cards-grid.grid-5 {
+  grid-template-columns: repeat(5, 1fr);
+}
+
+.cards-grid.grid-7 {
+  grid-template-columns: repeat(7, 1fr);
+}
+
+.cards-grid.grid-11 {
+  grid-template-columns: repeat(11, 1fr);
+}
+
+.cards-grid.grid-15 {
+  grid-template-columns: repeat(15, 1fr);
 }
 
 .cards-grid::before {
@@ -470,9 +491,29 @@ select:active {
   }
 
   .cards-grid {
-    grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+    grid-template-columns: repeat(3, 1fr);
     gap: 16px;
     padding: 16px;
+  }
+
+  .cards-grid.grid-3 {
+    grid-template-columns: repeat(3, 1fr);
+  }
+
+  .cards-grid.grid-5 {
+    grid-template-columns: repeat(3, 1fr);
+  }
+
+  .cards-grid.grid-7 {
+    grid-template-columns: repeat(3, 1fr);
+  }
+
+  .cards-grid.grid-11 {
+    grid-template-columns: repeat(3, 1fr);
+  }
+
+  .cards-grid.grid-15 {
+    grid-template-columns: repeat(3, 1fr);
   }
 
   .progress-bar-container {

@@ -40,9 +40,20 @@
             </button>
           </div>
         </div>
+
+        <div class="control-group grid-control">
+          <label>Grid Columns</label>
+          <select id="gridFilter">
+            <option value="3">3</option>
+            <option value="5">5</option>
+            <option value="7" selected>7</option>
+            <option value="11">11</option>
+            <option value="15">15</option>
+          </select>
+        </div>
       </div>
 
-      <div class="cards-grid" id="cardsGrid">
+      <div class="cards-grid grid-7" id="cardsGrid">
         <div class="loading">
           <div class="loading-text">Loading cards...</div>
           <div class="progress-bar-container">
@@ -52,5 +63,20 @@
       </div>
     </div>
     <script src="cardImageImport.js"></script>
+    <script>
+      document.getElementById("gridFilter").addEventListener("change", (e) => {
+        const cardsGrid = document.getElementById("cardsGrid");
+        // Remove all existing grid-X classes
+        cardsGrid.classList.remove(
+          "grid-3",
+          "grid-5",
+          "grid-7",
+          "grid-11",
+          "grid-15"
+        );
+        // Add the new grid class while keeping 'cards-grid' base class
+        cardsGrid.classList.add(`grid-${e.target.value}`);
+      });
+    </script>
   </body>
 </html>
