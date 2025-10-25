@@ -45,7 +45,11 @@ function displayFilteredCards(cards) {
 
   grid.innerHTML = sorted
     .map((card) => {
-      const imageUrl = card.image ? `${card.image}/high.webp` : "";
+      const imageUrl = getImageUrl(card);
+      const fallbackUrl =
+        currentAPI === "pocketdb" && card.image
+          ? `${POCKET_DB_IMAGES_FALLBACK}/${card.image}`
+          : "";
       const cardName = card.name || "Unknown Card";
 
       return `
@@ -54,7 +58,8 @@ function displayFilteredCards(cards) {
             src="${imageUrl}" 
             alt="${cardName}" 
             class="card-image"
-            onerror="this.src='data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 width=%22200%22 height=%22250%22%3E%3Crect fill=%22%23ddd%22 width=%22200%22 height=%22250%22/%3E%3Ctext x=%2250%25%22 y=%2250%25%22 text-anchor=%22middle%22 dy=%22.3em%22 fill=%22%23666%22 font-size=%2212%22%3EImage unavailable%3C/text%3E%3C/svg%3E'"
+            ${fallbackUrl ? `data-fallback="${fallbackUrl}"` : ""}
+            onerror="handleImageError(this)"
             loading="lazy"
           >
         </div>

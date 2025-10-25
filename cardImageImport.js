@@ -1,4 +1,10 @@
-const API = "https://api.tcgdex.net/v2/en";
+const TCGDEX_API = "https://api.tcgdex.net/v2/en";
+const POCKET_DB_API = "https://raw.githubusercontent.com/flibustier/pokemon-tcg-pocket-database/main/dist";
+// Try jsdelivr CDN which is more reliable for GitHub content
+const POCKET_DB_IMAGES = "https://cdn.jsdelivr.net/gh/flibustier/pokemon-tcg-exchange@main/public/images/cards";
+// Fallback to raw GitHub
+const POCKET_DB_IMAGES_FALLBACK = "https://raw.githubusercontent.com/flibustier/pokemon-tcg-exchange/main/public/images/cards";
+
 const BATCH_SIZE = 500;
 
 const RARITY_ORDER = {
@@ -12,6 +18,16 @@ const RARITY_ORDER = {
   "One Shiny": 8,
   "Two Shiny": 9,
   Crown: 10,
+  // Pocket DB rarities
+  Common: 1,
+  Uncommon: 2,
+  Rare: 3,
+  "Double Rare": 4,
+  "Super Rare": 5,
+  "Art Rare": 6,
+  "Special Art Rare": 7,
+  "Immersive Rare": 8,
+  "Crown Rare": 9,
 };
 
 let sets = [];
@@ -19,6 +35,8 @@ let currentCards = [];
 let currentSort = "rarity";
 let currentDirection = "desc";
 let isLoading = false;
+let currentAPI = "tcgdex"; // 'tcgdex' or 'pocketdb'
+let pocketDBCache = null; // Cache for Pocket DB data
 
 // Initialize app
 async function init() {
@@ -26,6 +44,7 @@ async function init() {
     await fetchSets();
     setupEventListeners();
     updateToggleButtons();
+    updateAPIButtons();
     await fetchCards("");
   } catch (error) {
     console.error("Initialization error:", error);
@@ -36,20 +55,45 @@ async function init() {
 // Fetch available sets
 async function fetchSets() {
   try {
-    const data = await fetch(`${API}/series/tcgp`).then((r) => r.json());
-    sets = data.sets || [];
+    if (currentAPI === "tcgdex") {
+      const data = await fetch(`${TCGDEX_API}/series/tcgp`).then((r) =>
+        r.json()
+      );
+      sets = data.sets || [];
+    } else {
+      const data = await fetch(`${POCKET_DB_API}/sets.json`).then((r) =>
+        r.json()
+      );
+      // Transform Pocket DB sets to match expected format
+      sets = data
+        .map((set) => ({
+          id: set.code,
+          name: set.label.en || set.label.eng || set.code,
+          releaseDate: set.releaseDate,
+          count: set.count,
+          packs: set.packs || [],
+        }))
+        .sort((a, b) => new Date(a.releaseDate) - new Date(b.releaseDate));
+    }
 
-    const filter = document.getElementById("setFilter");
-    sets.forEach((set) => {
-      const option = document.createElement("option");
-      option.value = set.id;
-      option.textContent = set.name;
-      filter.appendChild(option);
-    });
+    updateSetFilter();
   } catch (error) {
     console.error("Failed to fetch sets:", error);
     throw error;
   }
+}
+
+// Update set filter dropdown
+function updateSetFilter() {
+  const filter = document.getElementById("setFilter");
+  filter.innerHTML = '<option value="" selected>All Sets</option>';
+
+  sets.forEach((set) => {
+    const option = document.createElement("option");
+    option.value = set.id;
+    option.textContent = set.name;
+    filter.appendChild(option);
+  });
 }
 
 // Fetch cards from selected set or all sets
@@ -60,14 +104,31 @@ async function fetchCards(setId) {
   showLoading("Loading cards...", 0);
 
   try {
-    const cards = setId ? await fetchFromSet(setId) : await fetchFromAllSets();
+    let cards;
+    if (currentAPI === "tcgdex") {
+      cards = setId
+        ? await fetchFromSetTCGDex(setId)
+        : await fetchFromAllSetsTCGDex();
+      currentCards = await loadCardDetailsTCGDex(cards);
+    } else {
+      // For Pocket DB, load all cards once and cache
+      if (!pocketDBCache) {
+        showLoading("Loading card database...", 30);
+        pocketDBCache = await fetch(`${POCKET_DB_API}/cards.json`).then((r) =>
+          r.json()
+        );
+      }
+      cards = setId
+        ? pocketDBCache.filter((card) => card.set === setId)
+        : pocketDBCache;
+      currentCards = processCardsPocketDB(cards);
+    }
 
-    if (!cards.length) {
+    if (!currentCards.length) {
       showError("No cards found");
       return;
     }
 
-    currentCards = await loadCardDetails(cards);
     // Use the search filter if searchbar.js is loaded
     if (typeof filterAndDisplayCards === "function") {
       filterAndDisplayCards();
@@ -82,31 +143,39 @@ async function fetchCards(setId) {
   }
 }
 
-// Fetch cards from a specific set
-async function fetchFromSet(setId) {
-  const data = await fetch(`${API}/sets/${setId}`).then((r) => r.json());
+// TCGDex API functions
+async function fetchFromSetTCGDex(setId) {
+  const data = await fetch(`${TCGDEX_API}/sets/${setId}`).then((r) =>
+    r.json()
+  );
   return data.cards || [];
 }
 
-// Fetch cards from all sets
-async function fetchFromAllSets() {
+async function fetchFromAllSetsTCGDex() {
   const allCards = [];
+  let loaded = 0;
+  const total = sets.length;
+
   for (const set of sets) {
-    const cards = await fetchFromSet(set.id);
+    const cards = await fetchFromSetTCGDex(set.id);
     allCards.push(...cards);
+    loaded++;
+    showLoading(
+      `Loading sets... ${loaded}/${total}`,
+      Math.round((loaded / total) * 50)
+    );
   }
   return allCards;
 }
 
-// Load detailed information for all cards in batches
-async function loadCardDetails(basicCards) {
+async function loadCardDetailsTCGDex(basicCards) {
   const allDetails = [];
   const total = basicCards.length;
 
   for (let i = 0; i < total; i += BATCH_SIZE) {
     const batch = basicCards.slice(i, i + BATCH_SIZE);
     const progress = Math.min(i + BATCH_SIZE, total);
-    const progressPercent = Math.round((progress / total) * 100);
+    const progressPercent = Math.round(50 + (progress / total) * 50);
 
     showLoading(
       `Loading card details... ${progress}/${total}`,
@@ -114,7 +183,7 @@ async function loadCardDetails(basicCards) {
     );
 
     const promises = batch.map((card) =>
-      fetch(`${API}/cards/${card.id}`)
+      fetch(`${TCGDEX_API}/cards/${card.id}`)
         .then((r) => r.json())
         .catch((err) => {
           console.error(`Failed to load card ${card.id}:`, err);
@@ -131,6 +200,32 @@ async function loadCardDetails(basicCards) {
     ...card,
     expansionIndex: sets.findIndex((s) => s.id === card.set.id),
   }));
+}
+
+// Pocket DB API functions
+function processCardsPocketDB(cards) {
+  showLoading("Processing cards...", 80);
+
+  // Transform Pocket DB cards to match expected format
+  return cards.map((card) => {
+    const setInfo = sets.find((s) => s.id === card.set);
+    return {
+      id: `${card.set}-${card.number}`,
+      localId: card.number.toString(),
+      name: card.label.eng || card.label.en || "Unknown",
+      // Provide both CDN and fallback image URLs
+      image: card.imageName ? card.imageName : null,
+      rarity: card.rarity,
+      rarityCode: card.rarityCode,
+      category: card.packs && card.packs.length > 0 ? card.packs[0] : "Unknown",
+      set: {
+        id: card.set,
+        name: setInfo ? setInfo.name : card.set,
+      },
+      expansionIndex: sets.findIndex((s) => s.id === card.set),
+      packs: card.packs || [],
+    };
+  });
 }
 
 // Sort cards based on current settings
@@ -186,6 +281,17 @@ function compareByCollectorNumber(a, b) {
   return parseInt(a.localId || 0) - parseInt(b.localId || 0);
 }
 
+// Get image URL with fallback for Pocket DB
+function getImageUrl(card) {
+  if (currentAPI === "tcgdex") {
+    return card.image ? `${card.image}/high.webp` : "";
+  } else {
+    // Pocket DB: try CDN first, then fallback
+    if (!card.image) return "";
+    return `${POCKET_DB_IMAGES}/${card.image}`;
+  }
+}
+
 // Display cards in grid
 function displayCards() {
   const grid = document.getElementById("cardsGrid");
@@ -198,7 +304,11 @@ function displayCards() {
 
   grid.innerHTML = sorted
     .map((card) => {
-      const imageUrl = card.image ? `${card.image}/high.webp` : "";
+      const imageUrl = getImageUrl(card);
+      const fallbackUrl =
+        currentAPI === "pocketdb" && card.image
+          ? `${POCKET_DB_IMAGES_FALLBACK}/${card.image}`
+          : "";
       const cardName = card.name || "Unknown Card";
 
       return `
@@ -207,7 +317,8 @@ function displayCards() {
             src="${imageUrl}" 
             alt="${cardName}" 
             class="card-image"
-            onerror="this.src='data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 width=%22200%22 height=%22250%22%3E%3Crect fill=%22%23ddd%22 width=%22200%22 height=%22250%22/%3E%3Ctext x=%2250%25%22 y=%2250%25%22 text-anchor=%22middle%22 dy=%22.3em%22 fill=%22%23666%22 font-size=%2212%22%3EImage unavailable%3C/text%3E%3C/svg%3E'"
+            ${fallbackUrl ? `data-fallback="${fallbackUrl}"` : ""}
+            onerror="handleImageError(this)"
             loading="lazy"
           >
         </div>
@@ -215,6 +326,17 @@ function displayCards() {
     })
     .join("");
 }
+
+// Handle image loading errors with fallback
+window.handleImageError = function (img) {
+  const fallback = img.getAttribute("data-fallback");
+  if (fallback && img.src !== fallback) {
+    img.src = fallback;
+  } else {
+    img.src =
+      "data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 width=%22200%22 height=%22250%22%3E%3Crect fill=%22%23ddd%22 width=%22200%22 height=%22250%22/%3E%3Ctext x=%2250%25%22 y=%2250%25%22 text-anchor=%22middle%22 dy=%22.3em%22 fill=%22%23666%22 font-size=%2212%22%3EImage unavailable%3C/text%3E%3C/svg%3E";
+  }
+};
 
 // Show loading message with progress bar
 function showLoading(message, progress = 0) {
@@ -238,12 +360,40 @@ function showError(message) {
   grid.innerHTML = `<div class="error">${message}</div>`;
 }
 
+// Switch API
+async function switchAPI(api) {
+  if (currentAPI === api || isLoading) return;
+
+  currentAPI = api;
+  updateAPIButtons();
+
+  // Reset state
+  sets = [];
+  currentCards = [];
+  pocketDBCache = null; // Clear cache when switching
+
+  // Reset set filter
+  const setFilter = document.getElementById("setFilter");
+  setFilter.value = "";
+
+  // Reload data
+  try {
+    await fetchSets();
+    await fetchCards("");
+  } catch (error) {
+    console.error("API switch error:", error);
+    showError("Failed to switch API. Please try again.");
+  }
+}
+
 // Set up event listeners
 function setupEventListeners() {
   const setFilter = document.getElementById("setFilter");
   const sortFilter = document.getElementById("sortFilter");
   const sortAsc = document.getElementById("sortAsc");
   const sortDesc = document.getElementById("sortDesc");
+  const apiTCGDex = document.getElementById("apiTCGDex");
+  const apiPocketDB = document.getElementById("apiPocketDB");
 
   setFilter.addEventListener("change", (e) => {
     fetchCards(e.target.value);
@@ -287,6 +437,14 @@ function setupEventListeners() {
       }
     }
   });
+
+  apiTCGDex.addEventListener("click", () => {
+    switchAPI("tcgdex");
+  });
+
+  apiPocketDB.addEventListener("click", () => {
+    switchAPI("pocketdb");
+  });
 }
 
 // Update toggle button active states
@@ -296,6 +454,15 @@ function updateToggleButtons() {
 
   sortAsc.classList.toggle("active", currentDirection === "asc");
   sortDesc.classList.toggle("active", currentDirection === "desc");
+}
+
+// Update API button active states
+function updateAPIButtons() {
+  const apiTCGDex = document.getElementById("apiTCGDex");
+  const apiPocketDB = document.getElementById("apiPocketDB");
+
+  apiTCGDex.classList.toggle("active", currentAPI === "tcgdex");
+  apiPocketDB.classList.toggle("active", currentAPI === "pocketdb");
 }
 
 // Start the application
