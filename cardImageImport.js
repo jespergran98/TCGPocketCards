@@ -64,11 +64,13 @@ async function fetchSets() {
       const data = await fetch(`${POCKET_DB_API}/sets.json`).then((r) =>
         r.json()
       );
-      // Transform Pocket DB sets to match expected format
-      sets = data
+      // V2 API: sets.json is an object with series keys (A, B, etc.)
+      // Flatten all series into a single array
+      sets = Object.values(data)
+        .flat()
         .map((set) => ({
           id: set.code,
-          name: set.label.en || set.label.eng || set.code,
+          name: set.name?.en || set.name?.eng || set.code,
           releaseDate: set.releaseDate,
           count: set.count,
           packs: set.packs || [],
@@ -212,11 +214,11 @@ function processCardsPocketDB(cards) {
     return {
       id: `${card.set}-${card.number}`,
       localId: card.number.toString(),
-      name: card.label.eng || card.label.en || "Unknown",
-      // Provide both CDN and fallback image URLs
-      image: card.imageName ? card.imageName : null,
+      name: card.name || "Unknown",
+      // V2 API uses 'image' field
+      image: card.image || null,
       rarity: card.rarity,
-      rarityCode: card.rarityCode,
+      rarityCode: card.rarity, // V2 uses 'rarity' for the code (C, U, R, etc.)
       category: card.packs && card.packs.length > 0 ? card.packs[0] : "Unknown",
       set: {
         id: card.set,
